@@ -1,0 +1,12 @@
+Vendor Name,Spend Amount,Department,Invoice Description,Account Title
+EY,500,Strategy,test 1,a
+EY,200,Profit Improvement,test 2,b
+KPMG,100,Capital Markets,test 3,c
+FISERV,200,Strategy,test 4,d
+EY,700,Capital Markets,test 2,e
+KPMG,100,Profit Improvement,test 3,f
+FISERV,200,Strategy,test 4,g
+PWC,300,Strategy,,h
+Deloitte,300,Capital Markets,,i
+KPMG,400,WAM,,j
+EY,100,Profit Improvement,,k

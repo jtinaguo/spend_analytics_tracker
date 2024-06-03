@@ -1,0 +1,111 @@
+<!-- <!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Spend Analytics Tracker</title>
+        <style>
+            h1 {text-align:center;}
+            p {text-align:center;}
+        </style>
+    </head>
+    <body style="background-color:black;"> 
+
+        <h1 style="color:white;">Hello world!</h1>
+        <p style="color:white;">
+            <strong>Upload file:</strong>
+            Here
+        </p>
+    </body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spend Analytics Tracker</title>
+    <style>
+            h1 {text-align:center;}
+    </style>
+</head>
+<body>
+    <h1>Spend Analytics Tracker</h1>
+    <h2>Upload Excel Files to Merge</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file[]" multiple>
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="mappingSection" style="display: none;">
+        <h2>Map Columns</h2>
+        <p>
+            Please map the columns from your uploaded files to the following attributes:
+            <strong>Vendor Name</strong>, <strong>Spend Amount</strong>, <strong>Department</strong>,
+            <strong>Invoice Description</strong>, and <strong>Account Title</strong>.
+            This ensures that different column names serving the same purpose are correctly aligned.
+            For example, if one file has a column named "Vendor" and another file has a column named "Supplier",
+            both should be mapped to <strong>Vendor Name</strong>.
+        </p>
+        <form id="mappingForm">
+            <div id="fileMappings"></div>
+            <button type="submit">Merge and Download</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').onsubmit = async function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            displayColumnMappings(result.filenames, result.columns);
+        };
+
+        function displayColumnMappings(filenames, columns) {
+            const mappingSection = document.getElementById('mappingSection');
+            const fileMappings = document.getElementById('fileMappings');
+            fileMappings.innerHTML = '';
+            filenames.forEach(filename => {
+                const fileDiv = document.createElement('div');
+                fileDiv.innerHTML = `<h3>${filename}</h3>`;
+                columns[filename].forEach(column => {
+                    fileDiv.innerHTML += `
+                        <label for="${filename}-${column}">${column}</label>
+                        <input type="text" id="${filename}-${column}" name="${filename}-${column}">
+                    `;
+                });
+                fileMappings.appendChild(fileDiv);
+            });
+            mappingSection.style.display = 'block';
+        }
+
+        document.getElementById('mappingForm').onsubmit = async function(event) {
+            event.preventDefault();
+            const mappings = {};
+            const inputs = this.querySelectorAll('input');
+            inputs.forEach(input => {
+                const [filename, column] = input.id.split('-');
+                if (!mappings[filename]) mappings[filename] = {};
+                mappings[filename][column] = input.value;
+            });
+            const response = await fetch('/merge', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ mappings })
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'merged_file.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        };
+    </script>
+</body>
+</html>
