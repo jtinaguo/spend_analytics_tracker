@@ -71,7 +71,7 @@ def merge_files():
     #     merged_df.to_excel(writer, index=False)
     merged_df.to_csv(merged_filepath, index=False)
 
-    return send_file(merged_filepath, as_attachment=True, attachment_filename='merged_file.csv', mimetype='text/csv')
+    return send_file(merged_filepath, mimetype='text/csv', as_attachment=True, attachment_filename='merged_file.csv')
     # return send_file(merged_filepath, as_attachment=True, attachment_filename='merged_file.xlsx')
 
 if __name__ == '__main__':
