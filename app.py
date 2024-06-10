@@ -71,8 +71,14 @@ def merge_files():
     #     merged_df.to_excel(writer, index=False)
     merged_df.to_csv(merged_filepath, index=False)
 
-    return send_file(merged_filepath, mimetype='text/csv', as_attachment=True, attachment_filename='merged_file.csv')
-    # return send_file(merged_filepath, as_attachment=True, attachment_filename='merged_file.xlsx')
+    # writer.close()
+
+    return send_file(merged_filepath, mimetype='text/csv', as_attachment=True, download_name='merged_file.csv')
+    # return send_file(merged_filepath, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, attachment_filename='merged_file.xlsx')
+    
+    
+    # Remove llp,inc, etc suffixes
+    # lowercase
 
 if __name__ == '__main__':
     app.run(debug=True)
