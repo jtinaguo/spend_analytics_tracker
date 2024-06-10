@@ -101,7 +101,8 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'merged_file.xlsx';
+            // a.download = 'merged_file.xlsx';
+            a.download = 'merged_file.csv';
             document.body.appendChild(a);
             a.click();
             a.remove();
