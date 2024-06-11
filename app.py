@@ -2,20 +2,24 @@ from flask import Flask, render_template, request, send_file, jsonify
 import pandas as pd
 import os
 from werkzeug.utils import secure_filename
+# import logging
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MERGED_FILE'] = 'merged/merged_file.csv'
-# app.config['MERGED_FILE'] = 'merged/merged_file.xlsx'
 
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
 if not os.path.exists('merged'):
     os.makedirs('merged')
 
+# Set up logging
+# logging.basicConfig(level=logging.DEBUG)
+
 # Define the required columns
 REQUIRED_COLUMNS = ['Vendor Name', 'Spend Amount', 'Department', 'Invoice Description', 'Account Title']
+CORPORATE_SUFFIXES = ['inc', 'corp', 'llc', 'ltd', 'co', 'llp', 'inc.', 'corp.', 'llc.', 'ltd.', 'co.', 'llp.']
 
 @app.route('/')
 def index():
@@ -33,9 +37,11 @@ def upload_files():
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
+        # logging.debug(f"Saved file: {filepath}")
         df = pd.read_excel(filepath)
         filenames.append(filename)
         columns_dict[filename] = df.columns.tolist()
+        # logging.debug(f"Columns in {filename}: {df.columns.tolist()}")
 
     return jsonify({"filenames": filenames, "columns": columns_dict})
 
@@ -45,18 +51,23 @@ def merge_files():
     dataframes = []
 
     # Process each file according to the mappings
-    for filename, column_mapping in mappings.items():
+    for filename in mappings:
+        column_mapping = mappings[filename]
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # logging.debug(f"Processing file: {filepath}")
         df = pd.read_excel(filepath)
-        df.rename(columns=column_mapping, inplace=True)
-       
-        # Add missing columns with NaN values
-        for col in REQUIRED_COLUMNS:
-            if col not in df.columns:
-                df[col] = pd.NA
 
-        # Ensure DataFrame columns are in the required order
-        df = df[REQUIRED_COLUMNS]
+        # Rename columns according to the mappings, add missing columns with NaN values
+        new_columns = {}
+        for attribute in REQUIRED_COLUMNS:
+            if column_mapping[attribute]:
+                new_columns[column_mapping[attribute]] = attribute
+            else:
+                df[attribute] = pd.NA  # Add missing columns with NaN
+
+        # logging.debug(f"New columns mapping for {filename}: {new_columns}")
+        df.rename(columns=new_columns, inplace=True)
+        df = df[REQUIRED_COLUMNS]  # Ensure DataFrame columns are in the required order
         dataframes.append(df)
 
     # Merge all DataFrames
@@ -65,20 +76,29 @@ def merge_files():
     # Remove duplicates based on the 'Account Title' column
     merged_df.drop_duplicates(subset=['Account Title'], inplace=True)
 
+    # Process 'Vendor Name' column: remove corporate suffixes and convert to lowercase
+    def clean_vendor_name(vendor_name):
+        if pd.isna(vendor_name):
+            return vendor_name
+        vendor_name = vendor_name.lower()
+        for suffix in CORPORATE_SUFFIXES:
+            if vendor_name.endswith(suffix):
+                vendor_name = vendor_name[:-len(suffix)].strip()
+        return vendor_name
+
+    merged_df['Vendor Name'] = merged_df['Vendor Name'].apply(clean_vendor_name)
+
     # Save the merged DataFrame to a CSV file
     merged_filepath = app.config['MERGED_FILE']
-    # with pd.ExcelWriter(merged_filepath, engine='openpyxl') as writer:
-    #     merged_df.to_excel(writer, index=False)
     merged_df.to_csv(merged_filepath, index=False)
+    # logging.debug(f"Merged file saved to: {merged_filepath}")
 
-    # writer.close()
-
-    return send_file(merged_filepath, mimetype='text/csv', as_attachment=True, download_name='merged_file.csv')
-    # return send_file(merged_filepath, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, attachment_filename='merged_file.xlsx')
-    
-    
-    # Remove llp,inc, etc suffixes
-    # lowercase
+    return send_file(
+        merged_filepath,
+        as_attachment=True,
+        download_name='merged_file.csv',
+        mimetype='text/csv'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

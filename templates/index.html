@@ -23,9 +23,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spend Analytics Tracker</title>
-    <style>
-            h1 {text-align:center;}
-    </style>
 </head>
 <body>
     <h1>Spend Analytics Tracker</h1>
@@ -52,6 +49,8 @@
     </div>
 
     <script>
+        const REQUIRED_COLUMNS = ['Vendor Name', 'Spend Amount', 'Department', 'Invoice Description', 'Account Title'];
+
         document.getElementById('uploadForm').onsubmit = async function(event) {
             event.preventDefault();
             const formData = new FormData(this);
@@ -67,16 +66,29 @@
             const mappingSection = document.getElementById('mappingSection');
             const fileMappings = document.getElementById('fileMappings');
             fileMappings.innerHTML = '';
-            filenames.forEach(filename => {
-                const fileDiv = document.createElement('div');
-                fileDiv.innerHTML = `<h3>${filename}</h3>`;
-                columns[filename].forEach(column => {
-                    fileDiv.innerHTML += `
-                        <label for="${filename}-${column}">${column}</label>
-                        <input type="text" id="${filename}-${column}" name="${filename}-${column}">
-                    `;
+            REQUIRED_COLUMNS.forEach(attribute => {
+                const attributeDiv = document.createElement('div');
+                attributeDiv.innerHTML = `<h3>${attribute}</h3>`;
+                filenames.forEach(filename => {
+                    const selectLabel = document.createElement('label');
+                    selectLabel.innerHTML = `${filename}: `;
+                    const select = document.createElement('select');
+                    select.id = `${filename}-${attribute}`;
+                    select.name = `${filename}-${attribute}`;
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.text = 'No column selected';
+                    select.appendChild(defaultOption);
+                    columns[filename].forEach(column => {
+                        const option = document.createElement('option');
+                        option.value = column;
+                        option.text = column;
+                        select.appendChild(option);
+                    });
+                    selectLabel.appendChild(select);
+                    attributeDiv.appendChild(selectLabel);
                 });
-                fileMappings.appendChild(fileDiv);
+                fileMappings.appendChild(attributeDiv);
             });
             mappingSection.style.display = 'block';
         }
@@ -84,11 +96,13 @@
         document.getElementById('mappingForm').onsubmit = async function(event) {
             event.preventDefault();
             const mappings = {};
-            const inputs = this.querySelectorAll('input');
-            inputs.forEach(input => {
-                const [filename, column] = input.id.split('-');
-                if (!mappings[filename]) mappings[filename] = {};
-                mappings[filename][column] = input.value;
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => {
+                const [filename, attribute] = select.id.split('-');
+                if (!mappings[filename]) {
+                    mappings[filename] = {};
+                }
+                mappings[filename][attribute] = select.value || null; // Use null if no column is selected
             });
             const response = await fetch('/merge', {
                 method: 'POST',
@@ -101,7 +115,6 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            // a.download = 'merged_file.xlsx';
             a.download = 'merged_file.csv';
             document.body.appendChild(a);
             a.click();
